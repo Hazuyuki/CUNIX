@@ -1,3 +1,5 @@
+Environment:WSL. Use make then use ./1B to run the program.
+
 The program simulates the process of a COVID-19 monitor.
 
 To simulate the process, firstly we need to input the information of buildings, including their geometry positions (double X, double Y), BuildingIDs (int BID), and UnitIDs (int UID).
