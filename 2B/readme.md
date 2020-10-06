@@ -1,3 +1,5 @@
+Environment:WSL. Use make then use ./2B to run the program.
+
 The program uses a function named ask to simulate the balance. It only tells which side is heavier, and outputs the result on the screen. The result shows that in our method, only when the 11# is different will lead to a four-step weighing. We can handle the other situations in three steps.
 
 
