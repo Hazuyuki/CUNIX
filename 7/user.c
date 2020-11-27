@@ -23,7 +23,7 @@ int main()
         }
     }
     while (1) {
-        scanf("%s", &buffer);
+        gets(buffer);
         send(s, buffer, sizeof(buffer), 0);
         if (buffer[0] == 'E' && buffer[1] == 'X' && buffer[2] == 'I' && buffer[3] == 'T')
             break;

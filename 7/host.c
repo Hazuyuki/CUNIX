@@ -46,7 +46,7 @@ int main()
             if(c > max_sd)   
                 max_sd = c;   
         }   
-        int activity = select(max_sd + 1, &readfds, 0, 0, 0);  
+        select(max_sd + 1, &readfds, 0, 0, 0);  
         int c;
         if (FD_ISSET(s, &readfds)) {
             c = accept(s, 0, 0);
@@ -84,7 +84,6 @@ int main()
                     if (cl > 0) {
                         char btemp[200];
                         strcat(strcpy(btemp, buffer2[i]), buffer);
-                        printf("%s\n", btemp);
                         send(cl, btemp, strlen(btemp), 0);
                     }
                 }
