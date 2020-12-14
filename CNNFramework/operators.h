@@ -19,22 +19,11 @@ struct activation {
     double *val;
 };
 
-void ReLU(struct activation *act) {
-    int i, j, k;
-    for (i = 0; i < act->shape[0]; ++i)
-        for (j = 0; j < act->shape[1]; ++j)
-            for (k = 0; k < act->shape[2]; ++k)
-                if (act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k] < 0)
-                    act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k] = 0;
-    return;
-}
-
-
 void print_act(struct activation *act) {
     int i, j, k;
-    for (i = 0; i < 1; ++i) {
-        for (j = 0; j < 8; ++j) {
-            for (k = 0; k < 8; ++k)
+    for (i = 0; i < act->shape[0]; ++i) {
+        for (j = 0; j < act->shape[1]; ++j) {
+            for (k = 0; k < act->shape[2]; ++k)
                 printf("%lf ", act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k]);
             printf("\n");
         }
@@ -57,10 +46,31 @@ void print_layer(struct conv *layer) {
     }
 }
 
-
-
 double maxi(double x, double y) {
     return x > y ? x : y;
+}
+
+int Classification(struct activation *act) {
+    int i, maxind = -1;
+    double m = -1;
+    for (i = 0; i < act->shape[0] * act->shape[1] * act->shape[2]; ++i) {
+        //printf("%lf\n", act->val[i]);
+        if (m < act->val[i]) {
+            m = act->val[i];
+            maxind = i;
+        }
+    }
+    return maxind;
+}
+
+void ReLU(struct activation *act) {
+    int i, j, k;
+    for (i = 0; i < act->shape[0]; ++i)
+        for (j = 0; j < act->shape[1]; ++j)
+            for (k = 0; k < act->shape[2]; ++k)
+                if (act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k] < 0)
+                    act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k] = 0;
+    return;
 }
 
 struct activation *MaxPooling(struct activation *act, int x, int y) {
@@ -69,11 +79,9 @@ struct activation *MaxPooling(struct activation *act, int x, int y) {
     out->shape[0] = act->shape[0];
     out->shape[1] = nx; out->shape[2] = ny;
     out->val = (double *)malloc(sizeof(double) * out->shape[0] * out->shape[1] * out->shape[2]);
-    //printf("%d %d\n", nx, ny);
     for (i = 0; i < act->shape[0]; ++i)
         for (j = 0; j < nx; ++j)
             for (k = 0; k < ny; ++k) {
-                //printf("%d %d %d\n", i, j * x, k * y);
                 out->val[i * nx * ny + j * ny + k] = act->val[i * nx * ny * x * y + j * x * ny * y + k * y];
                 for (a = 0; a < x; ++a) {
                     if (j * x + a>= act->shape[1]) break;
@@ -83,10 +91,10 @@ struct activation *MaxPooling(struct activation *act, int x, int y) {
                     }
                 }
             }
+    free(act->val);
+    free(act);
     return out;
 } 
-
-
 
 struct activation *Pad(struct activation *act, int padding) {
     struct activation *newact = malloc(sizeof(struct activation));
@@ -102,50 +110,39 @@ struct activation *Pad(struct activation *act, int padding) {
                     newact->val[i * newact->shape[1] * newact->shape[2] + j * newact->shape[2] + k] = 0;
                 else 
                     newact->val[i * newact->shape[1] * newact->shape[2] + j * newact->shape[2] + k] = \
-                    act->val[i * act->shape[1] * act->shape[2] + (j - padding) * act->shape[2] + k - padding];
-    //free(act->val);
-    //free(act);
+                        act->val[i * act->shape[1] * act->shape[2] + (j - padding) * act->shape[2] + k - padding];
+    free(act->val);
+    free(act);
     act = newact;
-    
-
     return act;
 }
 
 struct activation *Convolution(struct activation *act, struct conv *layer) {
     if (layer->padding > 0)
         act = Pad(act, layer->padding);
-    int i, j, k;
-    //printf("%d\n", layer->padding);
-    //for (i = 0; i < act->shape[0]; ++i)
-    //    for (j = 0; j < act->shape[1]; ++j)
-    //        for (k = 0; k < act->shape[2]; ++k)
-    //            printf("%lf ", act->val[i * act->shape[1] * act->shape[2] + j * act->shape[2] + k]);
 
     struct activation *out = malloc(sizeof(struct activation));
     out->shape[0] = layer->shape[0];
     out->shape[1] = (act->shape[1] - layer->shape[2]) / layer->stride + 1;
     out->shape[2] = (act->shape[2] - layer->shape[3]) / layer->stride + 1;
     out->val = (double *)malloc(sizeof(double) * out->shape[0] * out->shape[1] * out->shape[2]);
+    int i, j, k;
     int a, b, c;
     for (i = 0; i < out->shape[0]; ++i) 
         for (j = 0; j < out->shape[1]; ++j)
             for (k = 0; k < out->shape[2]; ++k) {
                 out->val[i * out->shape[1] * out->shape[2] + j * out->shape[2] + k] = layer->bias[i];
                 for (a = 0; a < layer->shape[1]; ++a)
-                    //[i, a, b, c] * [a, stride * j + b, stride * k + c]
                     for (b = 0; b < layer->shape[2]; ++b)
                         for (c = 0; c < layer->shape[3]; ++c) {
                             out->val[i * out->shape[1] * out->shape[2] + j * out->shape[2] + k] += \
-                                layer->weight[i * layer->shape[1] * layer->shape[2] * layer->shape[3] + a * layer->shape[2] * layer->shape[3] + b * layer->shape[3] + c] * \
+                                layer->weight[i * layer->shape[1] * layer->shape[2] * layer->shape[3] + a * layer->shape[2] * layer->shape[3] + b * layer->shape[3] + c]*\
                                     act->val[a * act->shape[1] * act->shape[2] + (layer->stride * j + b) * act->shape[2] + (layer->stride * k + c)];
-                            //if (i == 0 && j == 4 && k == 0)
-                            //    printf("%d %d %d %d %d\n",act->shape[1], act->shape[2], a, (layer->stride * j + b), (layer->stride * k + c));
                         }
             }
-    //free(act->val);
-    //free(act);
+    free(act->val);
+    free(act);
     return out;
-
 }
 
 struct activation *FullConection(struct activation *act, struct fc *layer) {
@@ -157,14 +154,10 @@ struct activation *FullConection(struct activation *act, struct fc *layer) {
     
     for (i = 0; i < layer->shape[0]; ++i) {
         out->val[i] = layer->bias[i];
-        for (j = 0; j < layer->shape[1]; ++j) {
-            //printf("%d\n", act->shape[2]);
-            out->val[i] += act->val[j] * layer->weight[i * layer->shape[1] + j];
-        }
+        for (j = 0; j < layer->shape[1]; ++j)
+            out->val[i] += act->val[j] * layer->weight[i * layer->shape[1] + j];       
     }
-    //printf("%d\n%d\n", act, layer);
-    //free(act->val);
-    //free(act);
-    //printf("%d\n", layer == NULL);
+    free(act->val);
+    free(act);
     return out;
 }
